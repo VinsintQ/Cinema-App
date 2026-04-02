@@ -32,7 +32,7 @@ public class HallService {
     }
 
     public List<Seat> getSeatsForHall(Long hallId) {
-        getHallById(hallId); // validates existence
+        getHallById(hallId);
         return seatRepository.findByHallId(hallId);
     }
 
