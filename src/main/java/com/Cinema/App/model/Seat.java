@@ -17,8 +17,9 @@ public class Seat {
     private Hall hall;
 
     private int rowNumber;
-
     private int seatNumber;
-
     private String label;
+
+    @Version
+    private Long version;
 }
