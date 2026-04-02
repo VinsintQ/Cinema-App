@@ -40,7 +40,9 @@ public class SecurityConfiguration {
                                 "/auth/users/reset-password",
                                 "/auth/users/register/verify",
                                 "/api/movies",
-                                "/api/movies/**"
+                                "/api/movies/**",
+                                "/api/halls",
+                                "/api/halls/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 );
