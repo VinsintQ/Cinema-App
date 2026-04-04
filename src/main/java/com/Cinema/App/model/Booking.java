@@ -22,6 +22,10 @@ public class Booking {
     @JoinColumn(name = "showtime_id", nullable = false)
     private Showtime showtime;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seat_id", nullable = false)
+    private Seat seat;
+
     @Column(nullable = false)
     private String status;
 

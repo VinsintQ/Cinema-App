@@ -30,7 +30,7 @@ public class Showtime {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
-
+    
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
