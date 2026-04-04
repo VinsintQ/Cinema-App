@@ -51,16 +51,16 @@ public class BookingService {
         Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                 .orElseThrow(() -> new InformationNotFoundException("Showtime not found"));
 
-        // Pessimistic lock — blocks any concurrent transaction trying to book the same seat
+
         Seat seat = seatRepository.findByIdWithLock(request.getSeatId())
                 .orElseThrow(() -> new InformationNotFoundException("Seat not found"));
 
-        // validate seat belongs to the showtime's hall
+
         if (!seat.getHall().getId().equals(showtime.getHall().getId())) {
             throw new RuntimeException("Seat does not belong to this showtime's hall");
         }
 
-        // check seat not already booked (safe now — we hold the lock)
+
         if (bookingRepository.existsByShowtimeIdAndSeatIdAndStatusNot(
                 request.getShowtimeId(), request.getSeatId(), "CANCELLED")) {
             throw new RuntimeException("Seat " + seat.getLabel() + " is already reserved for this showtime");
@@ -84,7 +84,7 @@ public class BookingService {
     public BookingResponse cancelBooking(Long id) {
         Booking booking = findBookingById(id);
 
-        // only the owner can cancel
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!booking.getUser().getEmailAddress().equals(email)) {
             throw new RuntimeException("You are not authorized to cancel this booking");
@@ -99,7 +99,7 @@ public class BookingService {
         return BookingResponse.from(bookingRepository.save(booking));
     }
 
-    // admin: get all bookings for a showtime
+
     @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByShowtime(Long showtimeId) {
         return bookingRepository.findByShowtimeId(showtimeId)
