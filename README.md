@@ -18,80 +18,85 @@ A RESTful backend API for a cinema booking system. Users can browse movies, view
 
 ---
 
-## General Approach
-
-The project follows a layered architecture — controllers handle HTTP routing, services contain business logic, and repositories manage data access. Each domain (User, Movie, Hall, Showtime, Booking) has its own controller, service, and repository.
-
-Security is stateless using JWT tokens. On registration, users receive a verification email before they can log in. Role-based access control separates public endpoints from user-only and admin-only operations. Password reset is handled via a tokenized email link that opens a Thymeleaf form page.
-
-Seat booking uses a two-layer concurrency control strategy: pessimistic locking at the database level (SELECT FOR UPDATE) prevents race conditions when two users attempt to book the same seat simultaneously, and optimistic locking via a `@Version` field on the `Seat` entity acts as a safety net against stale reads.
-
-
-
-
-## Installation & Setup
-
-### Prerequisites
+### Tools
 
 - Java 17+
-- Maven 3.8+
-- PostgreSQL running locally
-- A Cloudinary account
-- A Gmail account with an app password for SMTP
+- Maven 
+- PostgreSQL 
+- A Cloudinary
+- A Gmail for SMTP
 
-### 1. Clone the repository
+`
 
-```bash
-git clone https://github.com/your-username/cinema-app.git
-cd cinema-app
-```
 
-### 2. Configure `application.properties`
-
-Edit `src/main/resources/application.properties`:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/cinema
-spring.datasource.username=your_pg_username
-spring.datasource.password=your_pg_password
-
-cloudinary.cloud-name=your_cloud_name
-cloudinary.api-key=your_api_key
-cloudinary.api-secret=your_api_secret
-
-spring.mail.username=your_gmail@gmail.com
-spring.mail.password=your_app_password
-```
-
-### 3. Seed the roles table
-
-```sql
-INSERT INTO roles (name) VALUES ('ROLE_USER');
-INSERT INTO roles (name) VALUES ('ROLE_ADMIN');
-```
-
-### 4. Run the application
-
-```bash
-./mvnw spring-boot:run
-```
-
-The API will be available at `http://localhost:8080`.
-
----
 
 ## API Overview
+
+### User Controller — `/auth/users`
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/auth/users/register` | Public | Register a new user |
 | POST | `/auth/users/login` | Public | Login and receive JWT |
-| GET | `/auth/users/register/verify?token=` | Public | Verify email |
-| GET | `/auth/users/resetPassword` | Public | Request password reset |
-| GET | `/api/movies` | Public | List all movies |
-| GET | `/api/showtimes/{id}/seats` | Public | Seat availability for a showtime |
-| POST | `/api/bookings` | User | Book a seat |
-| PUT | `/api/bookings/{id}/cancel` | User | Cancel a booking |
-| POST | `/api/movies` | Admin | Add a movie |
-| POST | `/api/halls` | Admin | Create a hall |
-| POST | `/api/showtimes` | Admin | Schedule a showtime |
+| GET | `/auth/users/register/verify?token=` | Public | Verify email address |
+| GET | `/auth/users/resetPassword` | Public | Request password reset email |
+| GET | `/auth/users/reset-password?token=` | Public | Open password reset form |
+| POST | `/auth/users/resetPassword?token=` | Public | Submit new password from form |
+| PUT | `/auth/users/change-password` | User | Change current password |
+| PUT | `/auth/users/{userId}/soft-delete` | Admin | Deactivate a user account |
+| PUT | `/auth/users/{userId}/promote` | Admin | Promote user to ADMIN role |
+
+---
+
+### Movie Controller — `/api/movies`
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/movies` | Public | Get all movies |
+| GET | `/api/movies/{id}` | Public | Get movie by ID |
+| GET | `/api/movies/search?title=` | Public | Search movies by title |
+| GET | `/api/movies/genre/{genre}` | Public | Get movies by genre |
+| POST | `/api/movies` | Admin | Create a movie (multipart: `movie` + `poster`) |
+| PUT | `/api/movies/{id}` | Admin | Update a movie (multipart: `movie` + `poster`) |
+| DELETE | `/api/movies/{id}` | Admin | Delete a movie |
+
+---
+
+### Hall Controller — `/api/halls`
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/halls` | Public | Get all halls |
+| GET | `/api/halls/{id}` | Public | Get hall by ID |
+| GET | `/api/halls/{id}/seats` | Public | Get all seats in a hall (no availability) |
+| POST | `/api/halls` | Admin | Create a hall (auto-generates seats) |
+| PUT | `/api/halls/{id}` | Admin | Update a hall (regenerates seats if size changed) |
+| DELETE | `/api/halls/{id}` | Admin | Delete a hall and its seats |
+
+---
+
+### Showtime Controller — `/api/showtimes`
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/showtimes` | Public | Get all showtimes |
+| GET | `/api/showtimes/{id}` | Public | Get showtime by ID |
+| GET | `/api/showtimes/{id}/seats` | Public | Get seats with availability for a showtime |
+| GET | `/api/showtimes/movie/{movieId}` | Public | Get showtimes for a movie |
+| GET | `/api/showtimes/hall/{hallId}` | Public | Get showtimes for a hall |
+| POST | `/api/showtimes` | Admin | Create a showtime (validates no hall overlap) |
+| PUT | `/api/showtimes/{id}` | Admin | Update a showtime |
+| DELETE | `/api/showtimes/{id}` | Admin | Delete a showtime |
+
+---
+
+### Booking Controller — `/api/bookings`
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/bookings/my` | User | Get current user's bookings |
+| GET | `/api/bookings/{id}` | User | Get booking by ID |
+| POST | `/api/bookings` | User | Book a seat for a showtime |
+| PUT | `/api/bookings/{id}/cancel` | User (owner) | Cancel a booking |
+| GET | `/api/bookings/showtime/{showtimeId}` | Admin | Get all bookings for a showtime |
+
