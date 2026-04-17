@@ -5,15 +5,16 @@ import com.Cinema.App.model.*;
 import com.Cinema.App.model.request.BookingRequest;
 import com.Cinema.App.model.response.BookingResponse;
 import com.Cinema.App.repository.*;
-import jakarta.persistence.OptimisticLockException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class BookingService {
@@ -29,6 +30,24 @@ public class BookingService {
 
     @Autowired
     private UserRepository userRepository;
+
+    /**
+     * A map of locks — one ReentrantLock per unique (showtimeId + seatId) combination.
+     * ConcurrentHashMap ensures thread-safe creation of new lock entries.
+     *
+     * This way two users booking different seats are never blocked by each other,
+     * but two users booking the SAME seat will be serialized.
+     */
+    private final Map<String, ReentrantLock> seatLocks = new ConcurrentHashMap<>();
+
+    /**
+     * Returns the lock for a specific seat+showtime combination.
+     * computeIfAbsent is atomic — safe for concurrent calls.
+     */
+    private ReentrantLock getLockForSeat(Long showtimeId, Long seatId) {
+        String key = showtimeId + "-" + seatId;
+        return seatLocks.computeIfAbsent(key, k -> new ReentrantLock());
+    }
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getMyBookings() {
@@ -51,22 +70,26 @@ public class BookingService {
         Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                 .orElseThrow(() -> new InformationNotFoundException("Showtime not found"));
 
-
-        Seat seat = seatRepository.findByIdWithLock(request.getSeatId())
+        Seat seat = seatRepository.findById(request.getSeatId())
                 .orElseThrow(() -> new InformationNotFoundException("Seat not found"));
-
 
         if (!seat.getHall().getId().equals(showtime.getHall().getId())) {
             throw new RuntimeException("Seat does not belong to this showtime's hall");
         }
 
+        // Get the ReentrantLock for this specific seat+showtime
+        ReentrantLock lock = getLockForSeat(request.getShowtimeId(), request.getSeatId());
 
-        if (bookingRepository.existsByShowtimeIdAndSeatIdAndStatusNot(
-                request.getShowtimeId(), request.getSeatId(), "CANCELLED")) {
-            throw new RuntimeException("Seat " + seat.getLabel() + " is already reserved for this showtime");
-        }
-
+        // Acquire the lock — only one thread can pass this point for this seat at a time
+        // All other threads trying to book the same seat will BLOCK here until lock is released
+        lock.lock();
         try {
+            // Critical section — safe to check and book now
+            if (bookingRepository.existsByShowtimeIdAndSeatIdAndStatusNot(
+                    request.getShowtimeId(), request.getSeatId(), "CANCELLED")) {
+                throw new RuntimeException("Seat " + seat.getLabel() + " is already reserved for this showtime");
+            }
+
             Booking booking = Booking.builder()
                     .user(user)
                     .showtime(showtime)
@@ -74,16 +97,19 @@ public class BookingService {
                     .status("CONFIRMED")
                     .totalPrice(showtime.getPrice())
                     .build();
+
             return BookingResponse.from(bookingRepository.save(booking));
-        } catch (OptimisticLockException | OptimisticLockingFailureException e) {
-            throw new RuntimeException("Seat was just booked by someone else. Please try another seat.");
+
+        } finally {
+            // Always release the lock — even if an exception is thrown
+            // This prevents deadlocks
+            lock.unlock();
         }
     }
 
     @Transactional
     public BookingResponse cancelBooking(Long id) {
         Booking booking = findBookingById(id);
-
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!booking.getUser().getEmailAddress().equals(email)) {
@@ -98,7 +124,6 @@ public class BookingService {
         booking.setCancelledAt(LocalDateTime.now());
         return BookingResponse.from(bookingRepository.save(booking));
     }
-
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByShowtime(Long showtimeId) {
