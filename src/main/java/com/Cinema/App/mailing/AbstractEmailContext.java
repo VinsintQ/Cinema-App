@@ -19,8 +19,7 @@ public abstract class AbstractEmailContext {
     }
 
     public <T> void init(T context){
-        //we can do any common configuration setup here
-        // like setting up some base URL and context
+
     }
 
     public Object put(String key, Object value) {

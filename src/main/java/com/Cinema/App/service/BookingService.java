@@ -31,19 +31,10 @@ public class BookingService {
     @Autowired
     private UserRepository userRepository;
 
-    /**
-     * A map of locks — one ReentrantLock per unique (showtimeId + seatId) combination.
-     * ConcurrentHashMap ensures thread-safe creation of new lock entries.
-     *
-     * This way two users booking different seats are never blocked by each other,
-     * but two users booking the SAME seat will be serialized.
-     */
+
     private final Map<String, ReentrantLock> seatLocks = new ConcurrentHashMap<>();
 
-    /**
-     * Returns the lock for a specific seat+showtime combination.
-     * computeIfAbsent is atomic — safe for concurrent calls.
-     */
+
     private ReentrantLock getLockForSeat(Long showtimeId, Long seatId) {
         String key = showtimeId + "-" + seatId;
         return seatLocks.computeIfAbsent(key, k -> new ReentrantLock());
@@ -84,7 +75,7 @@ public class BookingService {
         // All other threads trying to book the same seat will BLOCK here until lock is released
         lock.lock();
         try {
-            // Critical section — safe to check and book now
+
             if (bookingRepository.existsByShowtimeIdAndSeatIdAndStatusNot(
                     request.getShowtimeId(), request.getSeatId(), "CANCELLED")) {
                 throw new RuntimeException("Seat " + seat.getLabel() + " is already reserved for this showtime");
@@ -101,8 +92,7 @@ public class BookingService {
             return BookingResponse.from(bookingRepository.save(booking));
 
         } finally {
-            // Always release the lock — even if an exception is thrown
-            // This prevents deadlocks
+
             lock.unlock();
         }
     }

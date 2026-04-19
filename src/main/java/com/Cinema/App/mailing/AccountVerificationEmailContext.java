@@ -9,7 +9,7 @@ public class AccountVerificationEmailContext extends AbstractEmailContext {
 
     @Override
     public <T> void init(T context){
-        //System.out.println("email entered ------>" + fromEmail);
+
         User user = (User) context;
         put("username", user.getUserName());
         setTemplateLocation("mailing/email-verification");

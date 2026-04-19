@@ -13,7 +13,7 @@ public class AccountPasswordResetEmailContext extends AbstractEmailContext {
         put("username", user.getUserName());
         setTemplateLocation("mailing/password-reset");
         setSubject("Reset your password");
-        //setFrom("no-reply@kttpro.com");
+
         setTo(user.getEmailAddress());
     }
 
