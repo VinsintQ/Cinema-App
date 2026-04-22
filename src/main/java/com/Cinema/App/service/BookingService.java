@@ -76,11 +76,10 @@ public class BookingService {
             throw new RuntimeException("Seat does not belong to this showtime's hall");
         }
 
-        // Get the ReentrantLock for this specific seat+showtime
+
         ReentrantLock lock = getLockForSeat(request.getShowtimeId(), request.getSeatId());
 
-        // Acquire the lock — only one thread can pass this point for this seat at a time
-        // All other threads trying to book the same seat will BLOCK here until lock is released
+
         lock.lock();
         try {
 
