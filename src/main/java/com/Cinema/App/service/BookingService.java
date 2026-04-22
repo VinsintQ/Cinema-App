@@ -2,6 +2,7 @@ package com.Cinema.App.service;
 
 import com.Cinema.App.exception.InformationNotFoundException;
 import com.Cinema.App.exception.SeatAlreadyBookedException;
+import com.Cinema.App.exception.ShowtimeAlreadyStartedException;
 import com.Cinema.App.model.*;
 import com.Cinema.App.model.request.BookingRequest;
 import com.Cinema.App.model.response.BookingResponse;
@@ -54,6 +55,7 @@ public class BookingService {
         return BookingResponse.from(findBookingById(id));
     }
 
+
     @Transactional
     public BookingResponse createBooking(BookingRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -62,6 +64,11 @@ public class BookingService {
         Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                 .orElseThrow(() -> new InformationNotFoundException("Showtime not found"));
 
+        if (showtime.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new ShowtimeAlreadyStartedException(
+                    "Cannot book seat. Showtime already started at " + showtime.getStartTime()
+            );
+        }
         Seat seat = seatRepository.findById(request.getSeatId())
                 .orElseThrow(() -> new InformationNotFoundException("Seat not found"));
 

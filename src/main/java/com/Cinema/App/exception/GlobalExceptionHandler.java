@@ -42,4 +42,12 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
+    @ExceptionHandler(ShowtimeAlreadyStartedException.class)
+    public ResponseEntity<Map<String, String>> handleShowtimeStarted(ShowtimeAlreadyStartedException ex) {
+
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
 }
