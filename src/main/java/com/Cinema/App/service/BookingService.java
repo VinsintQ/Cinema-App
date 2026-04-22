@@ -1,6 +1,7 @@
 package com.Cinema.App.service;
 
 import com.Cinema.App.exception.InformationNotFoundException;
+import com.Cinema.App.exception.SeatAlreadyBookedException;
 import com.Cinema.App.model.*;
 import com.Cinema.App.model.request.BookingRequest;
 import com.Cinema.App.model.response.BookingResponse;
@@ -78,7 +79,9 @@ public class BookingService {
 
             if (bookingRepository.existsByShowtimeIdAndSeatIdAndStatusNot(
                     request.getShowtimeId(), request.getSeatId(), "CANCELLED")) {
-                throw new RuntimeException("Seat " + seat.getLabel() + " is already reserved for this showtime");
+                throw new SeatAlreadyBookedException(
+                        "Seat with id : " + seat.getId() + " and Label "+seat.getLabel()+ " is already reserved for this showtime"
+                );
             }
 
             Booking booking = Booking.builder()
