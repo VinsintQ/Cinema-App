@@ -17,8 +17,17 @@ public class GlobalExceptionHandler {
 
         Map<String, String> error = new HashMap<>();
         error.put("error", "Access Denied");
-        error.put("message", "Only ADMIN users can create movies");
+        error.put("message", "Only ADMIN users can use that route");
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(InformationNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(InformationNotFoundException ex) {
+
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 }
